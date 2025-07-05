@@ -3,4 +3,5 @@ export interface Transaction {
   amount: number;
   description: string;
   date: string; // ISO string
+  category:string
 }

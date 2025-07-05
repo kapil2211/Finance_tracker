@@ -10,6 +10,7 @@ export default function Page() {
     amount: number;
     description: string;
     date: string;
+    category:string;
   }) => {
     const res = await fetch("/api/transactions", {
       method: "POST",

@@ -62,6 +62,7 @@ export default function TransactionList() {
                 <th className="p-2 border">Description</th>
                 <th className="p-2 border">Amount (₹)</th>
                 <th className="p-2 border">Date</th>
+                <th className="p-2 border">Category</th>
                 <th className="p-2 border">Actions</th>
               </tr>
             </thead>
@@ -74,6 +75,9 @@ export default function TransactionList() {
                   </td>
                   <td className="p-2 border">
                     {new Date(tx.date).toLocaleDateString()}
+                  </td>
+                  <td className="p-2 border">
+                    {tx.category}
                   </td>
                   <td className="p-2 border space-x-2">
                     <Button
@@ -112,7 +116,7 @@ export default function TransactionList() {
             <TransactionForm
               initialData={editTx}
               onEdit={handleEditSave}
-              onAdd={() => {}}
+              onAdd={() => { }}
             />
           )}
         </DialogContent>

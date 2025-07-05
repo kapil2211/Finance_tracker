@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -8,34 +8,39 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 // Define the shape of each chart bar
 type ChartData = {
-  month: string;// x-axis
-  total: number;//y-axis
+  month: string;
+  total: number;
 };
 
 // Define the shape of each transaction from the API
 type Transaction = {
-  amount: number; // y-axis ()
-  date: string;// x-axis
+  amount: number;
+  date: string;
+  category: string;
 };
 
+// Color palette for pie chart
+const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#00C49F", "#FFBB28"];
+
 export default function MonthlyBarChart() {
-  // state for handling the total amount in particular month in array
-  const [data, setData] = useState<ChartData[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [monthlyData, setMonthlyData] = useState<ChartData[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
-      // HTTP GET request to your backend API to fetch all transactions from MongoDB. 
       const res = await fetch("/api/transactions");
-      // converts the response body into a JavaScript object (an array of transactions).
       const txs: Transaction[] = await res.json();
+      setTransactions(txs);
 
-      // declares an empty object named monthlyTotals with a specific structure Record :
+      // Group by month
       const monthlyTotals: Record<string, number> = {};
-
       txs.forEach(({ amount, date }) => {
         const month = new Date(date).toLocaleString("default", {
           month: "short",
@@ -46,26 +51,39 @@ export default function MonthlyBarChart() {
       });
 
       const chartData: ChartData[] = Object.entries(monthlyTotals).map(
-        ([month, total]) => ({
-          month,
-          total,
-        })
+        ([month, total]) => ({ month, total })
       );
 
-      setData(chartData);
+      setMonthlyData(chartData);
     };
 
     fetchData();
   }, []);
 
-  return (
-    
-    <div className="flex flex-col items-center space-y-6 mt-10">
-      <h2 className="text-2xl font-bold mt-4 p-3">Monthly Expense Chart</h2>
+  // Category-wise Pie Chart Data
+  const categoryData = useMemo(() => {
+    const result: { name: string; value: number }[] = [];
 
+    transactions.forEach((tx) => {
+      const cat = tx.category || "Other";
+      const existing = result.find((r) => r.name === cat);
+      if (existing) {
+        existing.value += tx.amount;
+      } else {
+        result.push({ name: cat, value: tx.amount });
+      }
+    });
+
+    return result;
+  }, [transactions]);
+
+  return (
+    <div className="flex flex-col items-center space-y-6 mt-10">
       <div className="w-full max-w-3xl">
+        <h2 className="text-2xl font-bold mt-4 p-3">Monthly Expense Chart</h2>
+
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data}>
+          <BarChart data={monthlyData}>
             <XAxis dataKey="month" />
             <YAxis />
             <Tooltip />
@@ -73,7 +91,26 @@ export default function MonthlyBarChart() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
 
+      <div>
+        <h2 className="text-2xl font-bold mt-4 mb-2 text-center">Category Breakdown</h2>
+        <PieChart width={500} height={500}>
+          <Pie
+            dataKey="value"
+            isAnimationActive
+            data={categoryData}
+            cx="50%"
+            cy="50%"
+            outerRadius={150}
+            label
+          >
+            {categoryData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </div>
+    </div>
   );
 }
