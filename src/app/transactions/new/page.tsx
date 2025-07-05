@@ -1,22 +1,34 @@
-"use client"
+"use client";
+
 import TransactionForm from "@/components/TransactionForm";
+import { useRouter } from "next/navigation";
 
-// Define the form data structure
-type FormData = {
-  amount: string;
-  date: string;
-  description: string;
-};
+export default function Page() {
+  const router = useRouter();
 
-export default function NewTransaction() {
-  const handleCreate = async (form: FormData) => {
-    await fetch("/api/transactions", {
+  const handleAdd = async (newTx: {
+    amount: number;
+    description: string;
+    date: string;
+  }) => {
+    const res = await fetch("/api/transactions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(newTx),
     });
-    window.location.href = "/";
+
+    if (res.ok) {
+      const created = await res.json();
+      console.log("Transaction added:", created);
+      // Redirect to the list page or show a success toast
+      router.push("/"); // ← Redirect to home or /transactions
+    } else {
+      console.error("Failed to add transaction");
+    }
   };
 
-  return <TransactionForm onSubmit={handleCreate} />;
+  return (
+    <div className="max-w-xl mx-auto p-6">
+      <TransactionForm onAdd={handleAdd} />
+    </div>
+  );
 }

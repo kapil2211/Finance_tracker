@@ -1,71 +1,122 @@
-"use client"
-import { useState,useEffect } from "react"
-import Link from "next/link"
-import { Button } from "./ui/button"
+"use client";
 
-// Define a type for transacction object
-type Transaction={
-    _id:string;
-    amount:string;
-    date:string;
-    description:string;
-}
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-export default function TransactionList(){
-    const [txs , setTxs]=useState<Transaction[]>([]);
+import TransactionForm from "@/components/TransactionForm";
+import { Transaction } from "@/types/transaction";
 
-    const fetchTxs=async()=>{
-        const res=await fetch("api/transactions");
-        const data=await res.json();
-        setTxs(data);
-    }
+export default function TransactionList() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [editTx, setEditTx] = useState<Transaction | null>(null);
+  const [open, setOpen] = useState(false);
 
-    const deleteTx=async(id:string)=>{
-        await fetch(`api/transactions/${id}`,{method:"DELETE"});
-        fetchTxs();// refresh list 
-    }
+  const fetchTransactions = async () => {
+    const res = await fetch("/api/transactions");
+    const data = await res.json();
+    setTransactions(data);
+  };
 
-    useEffect(()=>{
-        fetchTxs()
-    },[]);
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
-    return (
-<div className="mt-6 p-4">
-  <h2 className="text-xl font-semibold mb-4">Transaction List</h2>
+  const handleDelete = async (id: string) => {
+    await fetch("/api/transactions", {
+      method: "DELETE",
+      body: JSON.stringify({ id }),
+    });
+    setTransactions((prev) => prev.filter((tx) => tx._id !== id));
+  };
 
-  <div className="overflow-x-auto">
-    <table className="min-w-full border text-sm text-left">
-      <thead className="bg-gray-100">
-        <tr>
-          <th className="px-4 py-2 border">Amount (₹)</th>
-          <th className="px-4 py-2 border">Date</th>
-          <th className="px-4 py-2 border">Description</th>
-          <th className="px-4 py-2 border">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {txs.map((tx) => (
-          <tr key={tx._id} className="border-t hover:bg-gray-50">
-            <td className="px-4 py-2 border">₹{tx.amount}</td>
-            <td className="px-4 py-2 border">{new Date(tx.date).toDateString()}</td>
-            <td className="px-4 py-2 border">{tx.description}</td>
-            <td className="px-4 py-2 border flex gap-2">
-              <Link href={`/transactions/${tx._id}`}>
-                <Button variant="outline">Edit</Button>
-              </Link>
-              <Button
-                variant="destructive"
-                onClick={() => deleteTx(tx._id)}
-              >
-                Delete
-              </Button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</div>
+  const handleEditClick = (tx: Transaction) => {
+    setEditTx(tx);
+    setOpen(true);
+  };
 
-    )
+  const handleEditSave = async (updated: Transaction) => {
+    setTransactions((prev) =>
+      prev.map((tx) => (tx._id === updated._id ? updated : tx))
+    );
+    setOpen(false);
+    setEditTx(null);
+  };
+
+  return (
+    <div className="p-4 max-w-4xl mx-auto space-y-6">
+      <h2 className="text-xl font-bold mb-4">Transactions</h2>
+
+      {transactions.length === 0 ? (
+        <p className="text-center text-gray-500">No transactions yet.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full border text-sm">
+            <thead className="bg-gray-100 text-left">
+              <tr>
+                <th className="p-2 border">Description</th>
+                <th className="p-2 border">Amount (₹)</th>
+                <th className="p-2 border">Date</th>
+                <th className="p-2 border">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((tx) => (
+                <tr key={tx._id} className="border-b">
+                  <td className="p-2 border">{tx.description}</td>
+                  <td className="p-2 border text-green-600 font-medium">
+                    {tx.amount}
+                  </td>
+                  <td className="p-2 border">
+                    {new Date(tx.date).toLocaleDateString()}
+                  </td>
+                  <td className="p-2 border space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditClick(tx)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(tx._id!)}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Single shared dialog outside table */}
+      <Dialog open={open} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) setEditTx(null);
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Transaction</DialogTitle>
+          </DialogHeader>
+
+          {editTx && (
+            <TransactionForm
+              initialData={editTx}
+              onEdit={handleEditSave}
+              onAdd={() => {}}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

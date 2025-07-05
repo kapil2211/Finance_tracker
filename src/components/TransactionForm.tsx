@@ -1,99 +1,92 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// Type for a transaction form input
-interface TransactionFormData {
-  amount: string;
-  date: string;
-  description: string;
+import { Transaction } from "@/types/transaction";
+
+interface Props {
+  onAdd: (tx: Omit<Transaction, "_id">) => void;
+  onEdit?: (tx: Transaction) => void;
+  initialData?: Transaction | null;
 }
 
-// Props for the form component
-interface TransactionFormProps {
-  onSubmit: (formData: TransactionFormData) => void;
-  defaultValues?: Partial<TransactionFormData>;
-}
+export default function TransactionForm({ onAdd, onEdit, initialData }: Props) {
+  const isEdit = !!initialData;
 
-export default function TransactionForm({
-  onSubmit,
-  defaultValues = {},
-}: TransactionFormProps) {
-  const [form, setForm] = useState<TransactionFormData>({
-    amount: defaultValues.amount || "",
-    date: defaultValues.date?.slice(0, 10) || "",
-    description: defaultValues.description || "",
-  });
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!form.amount || !form.date) {
-      alert("Amount and Date required");
-      return;
+  useEffect(() => {
+    if (initialData) {
+      setAmount(initialData.amount.toString());
+      setDescription(initialData.description);
+      setDate(initialData.date.slice(0, 10)); // ISO format yyyy-mm-dd
     }
-    onSubmit(form);
+  }, [initialData]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!amount || !description || !date) return;
+
+    const payload = {
+      amount: parseFloat(amount),
+      description,
+      date,
+    };
+
+    if (isEdit && initialData?._id) {
+      const res = await fetch("/api/transactions", {
+        method: "PUT",
+        body: JSON.stringify({ _id: initialData._id, ...payload }),
+      });
+      const updated = await res.json();
+      onEdit?.(updated);
+    } else {
+      onAdd(payload);
+    }
+
+    // Reset form only for Add
+    if (!isEdit) {
+      setAmount("");
+      setDescription("");
+      setDate("");
+    }
   };
 
   return (
-   <div className="flex justify-center items-center min-h-screen bg-gray-50">
-  <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-    <h2 className="text-2xl font-semibold mb-6 text-center">Add Transaction</h2>
+    <form onSubmit={handleSubmit} className="space-y-4 border rounded-md p-4">
+      <h2 className="text-lg font-semibold">
+        {isEdit ? "Edit Transaction" : "Add Transaction"}
+      </h2>
 
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="amount" className="block text-sm font-medium mb-1">
-          Amount (₹)
-        </label>
-        <Input
-          id="amount"
-          name="amount"
-          type="number"
-          placeholder="Enter amount"
-          value={form.amount}
-          onChange={handleChange}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="date" className="block text-sm font-medium mb-1">
-          Date
-        </label>
-        <Input
-          id="date"
-          name="date"
-          type="date"
-          value={form.date}
-          onChange={handleChange}
-        />
-      </div>
-
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium mb-1">
-          Description
-        </label>
-        <Input
-          id="description"
-          name="description"
-          placeholder="Enter description"
-          value={form.description}
-          onChange={handleChange}
-        />
-      </div>
+      <Input
+        type="number"
+        placeholder="Amount"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        required
+      />
+      <Input
+        type="text"
+        placeholder="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        required
+      />
+      <Input
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        required
+      />
 
       <Button type="submit" className="w-full">
-        Submit
+        {isEdit ? "Update" : "Add"}
       </Button>
     </form>
-  </div>
-</div>
-
-
   );
 }
